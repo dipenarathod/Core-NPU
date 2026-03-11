@@ -1,1 +1,1 @@
-This folder contains all the Pyhotn files required by this project
+This folder contains all the Python files required by this project
