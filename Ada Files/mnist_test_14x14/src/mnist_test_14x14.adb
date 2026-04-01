@@ -75,6 +75,13 @@ procedure mnist_test_14x14 is
    Weight_Bias_Write_Cycles : Unsigned_64;
    Total_Cycles             : Unsigned_64;
 
+   Best_Total_Cycles  : Unsigned_64 := Unsigned_64'Last;
+   Worst_Total_Cycles : Unsigned_64 := 0;
+   Sum_Total_Cycles   : Unsigned_64 := 0;
+   Best_Sample_Index  : Natural := 0;
+   Worst_Sample_Index : Natural := 0;
+   Stage_Cycles       : Unsigned_64;
+
    --Find the largest probability label in the word array
    function Largest_Probability
      (Input_Word_Array : in Word_Array; Classes : Natural) return Natural
@@ -256,11 +263,43 @@ begin
          end if;
          Print_Time ("Time taken this iteration = ", Total_Cycles);
 
+         Sum_Total_Cycles := Sum_Total_Cycles + Total_Cycles;
+
+         if Total_Cycles < Best_Total_Cycles then
+            Best_Total_Cycles := Total_Cycles;
+            Best_Sample_Index := S;
+         end if;
+
+         if Total_Cycles > Worst_Total_Cycles then
+            Worst_Total_Cycles := Total_Cycles;
+            Worst_Sample_Index := S;
+         end if;
+
       end;
    end loop;
+   Put_Line ("--------------------------------");
    Put_Line ("Total Matches = " & Natural'Image (Matches));
    Accuracy := Float (Matches) / Float (Total_Samples);
    Put_Line ("Accuracy = " & Float'Image (Accuracy));
+   Put_Line ("Done");
+
+   Put_Line ("--------------------------------");
+   Put_Line ("Timing Summary Across All 28x28 Samples");
+   Print_Time ("Best-case total inference time = ", Best_Total_Cycles);
+   Put_Line
+     ("Best-case sample index = "
+      & Natural'Image (Best_Sample_Index)
+      & ", label = "
+      & Integer'Image (Labels (Best_Sample_Index)));
+   Print_Time ("Worst-case total inference time = ", Worst_Total_Cycles);
+   Put_Line
+     ("Worst-case sample index = "
+      & Natural'Image (Worst_Sample_Index)
+      & ", label = "
+      & Integer'Image (Labels (Worst_Sample_Index)));
+   Print_Time
+     ("Average total inference time = ",
+      Sum_Total_Cycles / Unsigned_64 (Total_Samples));
    Put_Line ("Done");
    loop
       null;
