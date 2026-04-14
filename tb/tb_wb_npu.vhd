@@ -143,8 +143,7 @@ Begin
 			i_wb_stb <= '0';-- peripheral not selected
 		End Procedure;
 
-		Procedure start_and_time(
-			op_name : In String;
+		Procedure launch_and_wait(
 			op_code : In Std_ulogic_vector(4 Downto 0)
 		) Is
 		Begin
@@ -152,9 +151,8 @@ Begin
 			wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 			Wait Until rising_edge(clk);
 			Wait Until rising_edge(clk);
-			--Wqait until ctrl reg is fully cleared
 			Loop
-				wb_read(CTRL_REG_ADDRESS, result_word);
+				wb_read(CTRL_REG_ADDRESS, result_word); --Wqait until ctrl reg is fully cleared
 				Exit When result_word = x"00000000";
 			End Loop;
 
@@ -163,64 +161,81 @@ Begin
 			ctrl_word(0)          := '1';             --Set the start bit
 
 			wb_write(CTRL_REG_ADDRESS, ctrl_word);    --Write the control command
+
 			--Wait until command is accepted
 			Loop
 				wb_read(STATUS_REG_ADDRESS, status);
 				Exit When status(0) = '1'; --status[0] = busy = 1
 			End Loop;
-			start_cyc := cycle_cnt; --start counting cycles as soon as the busy bit is set
 
 			--Wait until command is done
 			Loop
 				wb_read(STATUS_REG_ADDRESS, status);
 				Exit When (status(0) = '0' And status(1) = '1'); --status[1] = done = 1 and the busy bit is cleared
 			End Loop;
-
-			done_cyc := cycle_cnt;
-
-			Report op_name & " latency (cycles) = " & --Report the cycles used in this operation
-				Integer'image(done_cyc - start_cyc)
-				Severity note;
 		End Procedure;
 
 	Begin
-		--Quantization settings (used by Dense and Conv)
+
+		--2x2 MaxPool worst case
+		start_cyc := cycle_cnt;
+		wb_write(DIM_REG_ADDRESS, Std_ulogic_vector(to_unsigned(POOL_TENSOR_SIDE_LEN, 32)));
+		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
+		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
+		launch_and_wait(OP_MAXPOOL);
+		done_cyc := cycle_cnt;
+		Report "MaxPool = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
+
+		--2x2 AvgPool worst case
+		start_cyc := cycle_cnt;
+		wb_write(DIM_REG_ADDRESS, Std_ulogic_vector(to_unsigned(POOL_TENSOR_SIDE_LEN, 32)));
+		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
+		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
+		launch_and_wait(OP_AVGPOOL);
+		done_cyc := cycle_cnt;
+		Report "AvgPool = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
+
+		--ReLU worst-case
+		start_cyc := cycle_cnt;
+		wb_write(WORD_INDEX_ADDRESS, x"00000000");
+		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
+		launch_and_wait(OP_RELU);
+		done_cyc := cycle_cnt;
+		Report "ReLU = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
+
+		--Sigmoid worst-case
+		start_cyc := cycle_cnt;
+		wb_write(WORD_INDEX_ADDRESS, x"00000000");
+		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
+		launch_and_wait(OP_SIGMOID);
+		done_cyc := cycle_cnt;
+		Report "Sigmoid = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
+
+		--Dense worst-case
+		start_cyc := cycle_cnt;
 		wb_write(ZERO_POINT_REG_ADDRESS, x"00000000");
 		wb_write(QUANTIZED_MULTIPLIER_REG_ADDRESS, x"40000000");
 		wb_write(QUANTIZED_MULTIPLIER_RIGHT_SHIFT_REG_ADDRESS, x"00000000");
-
-		--2x2 MaxPool worst case
-		wb_write(DIM_REG_ADDRESS, Std_ulogic_vector(to_unsigned(POOL_TENSOR_SIDE_LEN, 32)));
-		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
-		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
-		start_and_time("MaxPool", OP_MAXPOOL);
-
-		--2x2 AvgPool worst case
-		wb_write(DIM_REG_ADDRESS, Std_ulogic_vector(to_unsigned(POOL_TENSOR_SIDE_LEN, 32)));
-		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
-		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
-		start_and_time("AvgPool", OP_AVGPOOL);
-
-		--ReLU worst-case
-		wb_write(WORD_INDEX_ADDRESS, x"00000000");
-		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
-		start_and_time("ReLU", OP_RELU);
-
-		--Sigmoid worst-case
-		wb_write(WORD_INDEX_ADDRESS, x"00000000");
-		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
-		start_and_time("Sigmoid", OP_SIGMOID);
-
-		--Dense worst-case
 		wb_write(WORD_INDEX_ADDRESS, x"00000000");
 		wb_write(WEIGHT_BASE_INDEX_ADDRESS, x"00000000");
 		wb_write(BIAS_INDEX_ADDRESS, x"00000000");
 		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(DENSE_INPUTS, 32)));
 		wb_write(N_OUTPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(DENSE_NEURONS, 32)));
-		start_and_time("Dense", OP_DENSE);
+		launch_and_wait(OP_DENSE);
+		done_cyc := cycle_cnt;
+		Report "Dense = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
 
 		--Conv2D worst-case
+		start_cyc := cycle_cnt;
+		wb_write(ZERO_POINT_REG_ADDRESS, x"00000000");
+		wb_write(QUANTIZED_MULTIPLIER_REG_ADDRESS, x"40000000");
+		wb_write(QUANTIZED_MULTIPLIER_RIGHT_SHIFT_REG_ADDRESS, x"00000000");
 		wb_write(DIM_REG_ADDRESS, Std_ulogic_vector(to_unsigned(CONV_TENSOR_SIDE_LEN, 32)));
 		wb_write(WORD_INDEX_ADDRESS, x"00000000");
 		wb_write(WEIGHT_BASE_INDEX_ADDRESS, x"00000000");
@@ -228,7 +243,10 @@ Begin
 		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(CONV_Input_Channels, 32)));
 		wb_write(N_OUTPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(CONV_Output_Channels, 32)));
-		start_and_time("Conv2D", OP_CONV);
+		launch_and_wait(OP_CONV);
+		done_cyc := cycle_cnt;
+		Report "Conv2D = " &
+			Integer'image(done_cyc - start_cyc) Severity note;
 
 		Wait For 100 ns;
 		Report "Simulation finished" Severity failure;
