@@ -39,10 +39,10 @@ gtkwave tb_wb_npu.ghw
 
 ### Results:
 ```bash
-tb_wb_npu.vhd:185:17:@486323040ps:(report note): MaxPool = 35017
-tb_wb_npu.vhd:195:17:@972639136ps:(report note): AvgPool = 35017
-tb_wb_npu.vhd:204:17:@1111741344ps:(report note): ReLU = 10016
-tb_wb_npu.vhd:213:17:@1250843552ps:(report note): Sigmoid = 10016
-tb_wb_npu.vhd:229:17:@2028890976ps:(report note): Dense = 56023
-tb_wb_npu.vhd:246:17:@116338033056ps:(report note): Conv2D = 8230785
+tb_wb_npu.vhd:188:17:@486336928ps:(report note): MaxPool = 35018
+tb_wb_npu.vhd:199:17:@972666912ps:(report note): AvgPool = 35018
+tb_wb_npu.vhd:209:17:@1111783008ps:(report note): ReLU = 10017
+tb_wb_npu.vhd:219:17:@1250899104ps:(report note): Sigmoid = 10017
+tb_wb_npu.vhd:236:17:@2028960416ps:(report note): Dense = 56024
+tb_wb_npu.vhd:254:17:@116338116384ps:(report note): Conv2D = 8230786
 ```
