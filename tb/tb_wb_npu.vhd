@@ -183,6 +183,7 @@ Begin
 		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
 		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
 		launch_and_wait(OP_MAXPOOL);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "MaxPool = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
@@ -193,6 +194,7 @@ Begin
 		wb_write(POOL_BASE_INDEX_ADDRESS, x"00000000");
 		wb_write(R_OUT_INDEX_ADDRESS, x"00000000");
 		launch_and_wait(OP_AVGPOOL);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "AvgPool = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
@@ -202,6 +204,7 @@ Begin
 		wb_write(WORD_INDEX_ADDRESS, x"00000000");
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
 		launch_and_wait(OP_RELU);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "ReLU = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
@@ -211,6 +214,7 @@ Begin
 		wb_write(WORD_INDEX_ADDRESS, x"00000000");
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(TENSOR_A_WORDS, 32)));
 		launch_and_wait(OP_SIGMOID);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "Sigmoid = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
@@ -227,6 +231,7 @@ Begin
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(DENSE_INPUTS, 32)));
 		wb_write(N_OUTPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(DENSE_NEURONS, 32)));
 		launch_and_wait(OP_DENSE);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "Dense = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
@@ -244,6 +249,7 @@ Begin
 		wb_write(N_INPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(CONV_Input_Channels, 32)));
 		wb_write(N_OUTPUTS_ADDRESS, Std_ulogic_vector(to_unsigned(CONV_Output_Channels, 32)));
 		launch_and_wait(OP_CONV);
+		wb_write(CTRL_REG_ADDRESS, (Others => '0'));
 		done_cyc := cycle_cnt;
 		Report "Conv2D = " &
 			Integer'image(done_cyc - start_cyc) Severity note;
