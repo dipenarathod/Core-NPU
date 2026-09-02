@@ -150,16 +150,6 @@ image_gen -app_bin bin/test_cases_neorv32.bin bin/test_cases_neorv32.exe
 # 2. Set Configuration → CR LF Auto
 # 3. Reset board → press 'u' → Ctrl+Shift+R → select .exe → press 'e'
 ```
-
-### Synthesize the FPGA design
-
-```bash
-cd "FPGA Setup"
-pnmainc <tcl_script_name>.tcl
-```
-
-See [`FPGA Setup/README.md`](FPGA%20Setup/README.md) for full details.
-
 ---
 
 ## Using the NPU in Your Own Design
