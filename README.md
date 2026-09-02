@@ -33,6 +33,9 @@ All programs run on the NEORV32. The NEORV32 sends data outside of its mapped ad
 
 ![NEORV32 - NPU Architecture](https://github.com/dipenarathod/Wishbone-NPU/blob/main/Images/NEORV32%20NPU%20System%20Design.png)
 
+The following shows the system architecture for real-time computer-vision tasks:
+![Complete Architecture](./Images/complete-system-block-diagram.png)
+
 ---
 
 ## Supported Operations
