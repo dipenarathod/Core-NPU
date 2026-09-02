@@ -20,11 +20,12 @@ Developed as a capstone project at Penn State, sponsored by [AdaCore](https://ww
 5. Dependencies
 6. Quickstart
 7. Using the NPU in Your Own Design
-8. Video Guides
-9. Related Repositories
-10. Contributing
-11. Ideas for Improvement
-12. Acknowledgments
+8. Resource Usage on Lattice ECP5U5MG-85F FPGA + Constraints
+9. Video Guides
+10. Related Repositories
+11. Contributing
+12. Ideas for Improvement
+13. Acknowledgments
 
 ## Architecture
 
@@ -162,6 +163,49 @@ The NPU peripheral in [`RTL/`](RTL/) is a self-contained Wishbone B4 slave with 
 4. Write data to tensor windows A/B/C, set the opcode in CTRL, assert start, poll STATUS for done, read results from tensor R.
 
 See [`RTL/README.md`](RTL/README.md) for the register map and [`Ada Files/README.md`](Ada%20Files/README.md) for the exact access patterns in code.
+
+---
+
+## Resource Usage on Lattice ECP5U5MG-85F FPGA + Constraints
+
+| Resource | Used | Available | Utilization |
+|---|---:|---:|---:|
+| Registers | 3,821 | 84,255 | 5% |
+| SLICEs | 11,972 | 41,820 | 29% |
+| LUT4s | 20,367 | 83,640 | 24% |
+| PIO Sites | 28 | 205 | 14% |
+| Block RAMs | 208 | 208 | **100%** |
+| PLLs | 1 | 4 | 25% |
+| GSRs | 1 | 1 | **100%** |
+| DSP MULT Sites | 36 | 312 | 11% |
+| DSP ALU Sites | 8 | 156 | 5% |
+| DSP PRADD Sites | 4 | 312 | 1% |
+| Clocks | 3 | — | — |
+| Clock Enables | 97 | — | — |
+
+#### LUT4 Breakdown
+
+| LUT4 Usage | Count |
+|---|---:|
+| Logic LUTs | 10,539 |
+| Distributed RAM | 7,596 |
+| Ripple Logic | 2,232 |
+| Shift Registers | 0 |
+
+#### DSP Components
+
+| DSP Component | Used |
+|---|---:|
+| MULT18X18D | 15 |
+| MULT9X9D | 6 |
+| ALU54B | 4 |
+| ALU24B | 0 |
+| PRADD18A | 0 |
+| PRADD9A | 4 |
+
+### Resource Limitation
+
+The current design uses all BRAM blocks available in the Lattice ECP5U5MG-85F FPGA. The LUT and DSP usage is otherwise moderate. This limitation hints that when porting to an FPGA with a different number of BRAM blocks, the NEORV32 IMEM and DMEM and the NPU tensors' sizes must be resized. Alternatively, the design can be updated to use external memory devices, or use more restrictive quantization (eg: INT4 Q0.3).
 
 ---
 
