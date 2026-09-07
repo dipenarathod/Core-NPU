@@ -8,6 +8,10 @@ It connects to any softcore with a [Wishbone B4](https://cdn.opencores.org/downl
 The reference implementation runs on the [NEORV32](https://github.com/stnolting/neorv32) RISC-V soft-core on a **Lattice ECP5U5MG-85F** FPGA, with an Ada firmware stack and multiple demo applications. 
 **The NPU itself is platform-independent VHDL — it works with any Wishbone master on any FPGA.**
 
+Refer to the [project report](https://github.com/dipenarathod/Core-NPU/blob/main/Team%2028%20-%20Report%205.0.pdf) for a deep dive into the research, technical choices, interaction diagrams, UML diagrams, test cases, challenges, areas for improvement, etc.  
+
+Watch this [video](https://youtu.be/6WUX9J_9Snc?si=NnZ7Qx5rK2lwi1Ah) for an overview of the complete system + a demo showing the system run CNN inference on a live camera feed to detect rock-paper-scissors hand gestures.
+
 Developed as a capstone project at Penn State, sponsored by [AdaCore](https://www.adacore.com/).
 
 ---
@@ -214,7 +218,7 @@ The current design uses all BRAM blocks available in the Lattice ECP5U5MG-85F FP
 This section documents NPU performance in various scenarios. Three main performance measures were used:\
 ### Trained Model Accuracy and Execution Time performance When Deployed on NEORV32 + NPU system vs a Traditional PC
 This test measures the following:
-1. Edge AI vs Traditional ML Performance - The NEORV32 + NPU is a low-powered edge device compared to a traditional x64 PC.\
+1. Quantized Edge NPU vs FP32 CPU Inferencece - The NEORV32 + NPU is a low-powered edge device compared to a traditional x64 PC.\
 2. INT8 vs FLOAT32 Performance - The models deployed on the edge device use INT8 Q0.7 quantized weights, while the models deployed on the x64 PC use float32 weights.\
 
 | Model | Accuracy on Edge Device (10 random samples) | Worst-Case Performance Time (in microseconds) for Edge Device | Best-Case Performance Time (in microseconds) for Edge Device | Average-Case Performance Time (in microseconds) for Edge Device | Accuracy on PC (20% of dataset) | Average Performance Time (in microseconds) for PC |
@@ -229,8 +233,11 @@ This test measures the following:
 #### Discussion 
 1. Weak CNN Performance: The CNN Workload (28x28 MNIST Test) is the highlight of this benchmark, as it reveals the limitation of acting only on four operands at a time in a computationally expensive operation. This test reveals that performance will increase by changing the NPU architecture to utilize parallel multiplication engines instead of reading 32-bit words at a time from the BRAM tensors. This architecture change, however, requires the hardware to read weights from the same tensor; therefore, a queue to hold read requests needs to be created to coordinate reads.\
 2. Accuracy: The accuracy for the NPU results here can be considered low, but there are two key reasons for it:
-a. Quantized Weights - The system uses int8 Q0.7 quantized weights compared to the full float32 weights the model generates. Quantization led to accuracy loss due to rounding errors and clamping in intermediary steps.
-b. Small test dataset - The model is tested for accuracy only on 10 random samples, which is very low when we consider the test set on PC was 20% of the entire dataset. The 10 random samples may be the ones the model was not trained on.
+a. Quantized Weights - The Q0.7 hardware representation introduces clipping and rounding at intermediate activations and weights, producing a quantization error relative to the FP32 reference model.
+
+b. Small test dataset - The edge-device accuracy measurement is exploratory because only 10 samples were evaluated. It should not be compared directly with the PC's 20%-of-dataset accuracy as a statistically equivalent metric.
+
+This implementation isn't competitive with a desktop-class CPU for small CNNs. The value proposition is a low-resource, low-power, self-contained accelerator architecture. The benchmark exposed that the current single-computation-engine design is memory/parallelism constrained, which is why the next architectural improvement would be increased parallel MAC throughput and better weight-read scheduling
 
 ### Worst-Case NPU Performance for Each Supported ML Operation
 Here we show worst-case NPU performance for each supported ML operation.
@@ -265,14 +272,14 @@ To create the worst-case configuration for each operation, the NPU performs the 
     - 80 output channels with 50 3x3 kernels = 80 * 50 * 3 * 3 = 36,000 elements (full weughts tensor)
 
 #### Discussion
-a. Difference in time: The differences are small, ranging from less than 1 microsecond for ReLU to about 6.4 microseconds for Sigmoid, which indicates that most of the measured gap comes from software and communication overhead between the CPU and the peripheral.
+a. Difference in time: The small difference between system and RTL-testbench measurements indicates that NEORV32/NPU communication and software control overhead contribute only a small fraction of execution time for these operations.
 
 b. Why SoftMax could not be computed: SoftMax is implemented as a three-pass operation. 
 - In the first pass, the NPU computes exponent values of the input tensor in hardware. 
 - In the second pass, the Ada library function computes the sum and inverted sum of these exponents
 - In the third pass, the NPU performs the normalization step, where the exponents are multiplied by the inverted sum.
 
-Because the full pipeline is split between hardware and software, the testbench cannot measure complete SoftMax timing on its own.
+Because SoftMax is a heterogeneous hardware/software operation in the current implementation, a peripheral-only RTL benchmark cannot measure its complete end-to-end latency.
 
 ### System Test Case Performance
 This test measures the system performance when applying CNN inference on a live camera feed.
@@ -282,14 +289,16 @@ The OV5640 camera captures the video feed. How the camera is integrated into the
 |--|--|:--|
 | 109.1 | 109.1 | 109.1 |
 
-| Image Capture Time (in milliseconds) | Average Inference Time (in milliseconds)|
-|--|:--|
-|109.1|79.9|
+| End-to-end frame period (in milliseconds) | Inference Execution (in milliseconds)| Sustained troughput
+|--|--|:--|
+|109.1|79.9|9.2FPS (~10FPS)|
 
 #### Discussion
-The system processes one frame in about 109.1 milliseconds, which is roughly 10 frames per second. 
-Image capture and inference overlap, but inference finishes earlier at about 79.9 milliseconds, so the system still waits for image capture to complete before the next cycle. 
+Inference overlaps image capture, but its 79.9 ms execution completes before the next frame is available; therefore, the camera/frame acquisition interval determines system throughput.
+
 That means image capture is the current bottleneck, and it sets the overall throughput. The identical worst-case, average-case, and best-case values show that this test was very consistent.
+
+The image capture bottleneck can be eliminated by adopting a ping-pong buffer architecture for the image buffer. However, the FPGA does not have enough BRAM blocks to implement this change.
 
 ---
 
