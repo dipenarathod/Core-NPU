@@ -275,7 +275,21 @@ b. Why SoftMax could not be computed: SoftMax is implemented as a three-pass ope
 Because the full pipeline is split between hardware and software, the testbench cannot measure complete SoftMax timing on its own.
 
 ### System Test Case Performance
-This test measures the 
+This test measures the system performance when applying CNN inference on a live camera feed.
+The OV5640 camera captures the video feed. How the camera is integrated into the system is shown in the "Architecture" section.\
+
+| Worst-Case Image Capture + Inference Time (in milliseconds) | Best-Case Image Capture + Inference Time (in milliseconds) | Average-Case Image Capture + Inference Time (in milliseconds) |
+|--|--|:--|
+| 109.1 | 109.1 | 109.1 |
+
+| Image Capture Time (in milliseconds) | Average Inference Time (in milliseconds)|
+|--|:--|
+|109.1|79.9|
+
+#### Discussion
+The system processes one frame in about 109.1 milliseconds, which is roughly 10 frames per second. 
+Image capture and inference overlap, but inference finishes earlier at about 79.9 milliseconds, so the system still waits for image capture to complete before the next cycle. 
+That means image capture is the current bottleneck, and it sets the overall throughput. The identical worst-case, average-case, and best-case values show that this test was very consistent.
 
 ---
 
