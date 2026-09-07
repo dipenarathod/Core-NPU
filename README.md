@@ -10,7 +10,7 @@ The reference implementation runs on the [NEORV32](https://github.com/stnolting/
 
 Refer to the [project report](https://github.com/dipenarathod/Core-NPU/blob/main/Team%2028%20-%20Report%205.0.pdf) for a deep dive into the research, technical choices, interaction diagrams, UML diagrams, test cases, challenges, areas for improvement, etc.  
 
-Watch this [video](https://youtu.be/6WUX9J_9Snc?si=NnZ7Qx5rK2lwi1Ah) for an overview of the complete system + a demo showing the system run CNN inference on a live camera feed to detect rock-paper-scissors hand gestures.
+Watch this [video](https://youtu.be/6WUX9J_9Snc?si=NnZ7Qx5rK2lwi1Ah) for an overview of the complete system + a demo showing the system running CNN inference on a live camera feed to detect rock-paper-scissors hand gestures.
 
 Developed as a capstone project at Penn State, sponsored by [AdaCore](https://www.adacore.com/).
 
@@ -37,7 +37,7 @@ Developed as a capstone project at Penn State, sponsored by [AdaCore](https://ww
 The NPU Wishbone peripheral is connected to the NEORV32 using the NEORV32's XBUS, which supports the Wishbone communication standard.
 All programs run on the NEORV32. The NEORV32 sends data outside of its mapped address range onto the XBUS, allowing it to read/write data and control commands to the NPU. 
 
-![NEORV32 - NPU Architecture](https://github.com/dipenarathod/Wishbone-NPU/blob/main/Images/NEORV32%20NPU%20System%20Design.png)
+![NEORV32 - NPU Architecture](./Images/neorv32-npu-system-design.png)
 
 The following shows the system architecture for real-time computer-vision tasks:
 ![Complete Architecture](./Images/complete-system-block-diagram.png)
