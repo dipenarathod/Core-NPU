@@ -21,11 +21,12 @@ Developed as a capstone project at Penn State, sponsored by [AdaCore](https://ww
 6. Quickstart
 7. Using the NPU in Your Own Design
 8. Resource Usage on Lattice ECP5U5MG-85F FPGA + Constraints
-9. Video Guides
-10. Related Repositories
-11. Contributing
-12. Ideas for Improvement
-13. Acknowledgments
+9. Performance
+10. Video Guides
+11. Related Repositories
+12. Contributing
+13. Ideas for Improvement
+14. Acknowledgments
 
 ## Architecture
 
@@ -205,7 +206,76 @@ See [`RTL/README.md`](RTL/README.md) for the register map and [`Ada Files/README
 
 ### Resource Limitation
 
-The current design uses all BRAM blocks available in the Lattice ECP5U5MG-85F FPGA. The LUT and DSP usage is otherwise moderate. This limitation hints that when porting to an FPGA with a different number of BRAM blocks, the NEORV32 IMEM and DMEM and the NPU tensors' sizes must be resized. Alternatively, the design can be updated to use external memory devices, or use more restrictive quantization (eg: INT4 Q0.3).
+The current design uses all BRAM blocks available in the Lattice ECP5U5MG-85F FPGA. The LUT and DSP usage is otherwise moderate. This limitation hints that when porting to an FPGA with a different number of BRAM blocks, the NEORV32 IMEM and DMEM and the NPU tensors' sizes must be resized. Alternatively, you can update the design to use external memory devices or use more restrictive quantization (e.g., INT4 Q0.3).
+
+---
+
+## Performance
+This section documents NPU performance in various scenarios. Three main performance measures were used:\
+### Trained Model Accuracy and Execution Time performance When Deployed on NEORV32 + NPU system vs a Traditional PC
+This test measures the following:
+1. Edge AI vs Traditional ML Performance - The NEORV32 + NPU is a low-powered edge device compared to a traditional x64 PC.\
+2. INT8 vs FLOAT32 Performance - The models deployed on the edge device use INT8 Q0.7 quantized weights, while the models deployed on the x64 PC use float32 weights.\
+
+| Model | Accuracy on Edge Device (10 random samples) | Worst-Case Performance Time (in microseconds) for Edge Device | Best-Case Performance Time (in microseconds) for Edge Device | Average-Case Performance Time (in microseconds) for Edge Device | Accuracy on PC (20% of dataset) | Average Performance Time (in microseconds) for PC |
+|---|---|---|---|---|---|---:|
+| 14x14 MNIST | 0.7 | 273 | 272 | 273 | 0.99 | 111.4 |
+| 28x28 MNIST | 0.8 | 18072 | 18067 | 18067 | 0.99 | 552.7 |
+| Wisconsin Breast Cancer | 1.0 | 113 | 108 | 111 | 0.99 | 139.8 |
+
+**PC**: i7-13700, 32GB DDR5 RAM
+**TensorFlow Config on PC**: 4 intra-op threads, 1 inter-op thread
+
+#### Discussion 
+1. Weak CNN Performance: The CNN Workload (28x28 MNIST Test) is the highlight of this benchmark, as it reveals the limitation of acting only on four operands at a time in a computationally expensive operation. This test reveals that performance will increase by changing the NPU architecture to utilize parallel multiplication engines instead of reading 32-bit words at a time from the BRAM tensors. This architecture change, however, requires the hardware to read weights from the same tensor; therefore, a queue to hold read requests needs to be created to coordinate reads.\
+2. Accuracy: The accuracy for the NPU results here can be considered low, but there are two key reasons for it:
+a. Quantized Weights - The system uses int8 Q0.7 quantized weights compared to the full float32 weights the model generates. Quantization led to accuracy loss due to rounding errors and clamping in intermediary steps.
+b. Small test dataset - The model is tested for accuracy only on 10 random samples, which is very low when we consider the test set on PC was 20% of the entire dataset. The 10 random samples may be the ones the model was not trained on.
+
+### Worst-Case NPU Performance for Each Supported ML Operation
+Here we show worst-case NPU performance for each supported ML operation.
+To create the worst-case configuration for each operation, the NPU performs the computation assuming the relevant tensor(s) are filled or nearly filled. This test only measures performance in terms of speed, not accuracy. The unit tests and ML model deployment tests deal with system accuracy.
+1. Compare Ada measurements (system results) with VHDL testbench measurements of the Wishbone NPU peripheral.
+2. Testbench results - Closer to direct hardware timing, while the
+3. Ada results (System Results) - End-to-End system performance. Includes latency from NEORV32-NPU communication and busy polling.
+
+| Layer | System Results (in cycles) | NPU Testbench Results (in cycles) | Difference in cycles (System - NPU) | Difference in time (System - NPU) in microseconds @clock = 72 MHz |
+|--|--|--|--|:--|
+| ReLU | 10,068 | 10,017 | 51 | 0.708 |
+| Sigmoid |10,476 | 10,017 | 459 | 6.375 |
+| SoftMax | 245,752 | (Can't be tested) | N/A | N/A |
+| 2x2 AvgPool | 35,102 | 35,018 | 84 | 1.167 |
+| 2x2 MaxPool | 35,083 | 35,018 | 65 | 0.902 |
+| Dense | 56,170 | 56,024 | 146 | 2.028 |
+| Conv2D | 8,230,942 | 8,230,786 | 156 | 2.167 |
+
+### Layer Configuration
+1. Activation Functions (ReLU, Sigmoid, and Softmax):
+    - 10,000 elements
+    - Filled input tensor
+2. Pooling Functions (2x2 MaxPooling and 2x2 AveragePooling):
+    - 100x100 Input tensor = 10,000 elements
+    - Filled input tensor
+3. Dense Layer:
+    - 18 input neurons, 2000 output neurons = 36,000 weights and 2000 biases
+    - Filled weights and bias tensors
+4. Conv2D:
+    - 13x13 input tensor, 50 input channels, and 80 output channels
+    - Output size = 11 * 11 * 80 = 9680 elements (nearly full result tensor)
+    - 80 output channels with 50 3x3 kernels = 80 * 50 * 3 * 3 = 36,000 elements (full weughts tensor)
+
+#### Discussion
+a. Difference in time: The differences are small, ranging from less than 1 microsecond for ReLU to about 6.4 microseconds for Sigmoid, which indicates that most of the measured gap comes from software and communication overhead between the CPU and the peripheral.
+
+b. Why SoftMax could not be computed: SoftMax is implemented as a three-pass operation. 
+- In the first pass, the NPU computes exponent values of the input tensor in hardware. 
+- In the second pass, the Ada library function computes the sum and inverted sum of these exponents
+- In the third pass, the NPU performs the normalization step, where the exponents are multiplied by the inverted sum.
+
+Because the full pipeline is split between hardware and software, the testbench cannot measure complete SoftMax timing on its own.
+
+### System Test Case Performance
+This test measures the 
 
 ---
 
